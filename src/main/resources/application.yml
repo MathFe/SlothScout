@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: slothscout
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:h2:file:./data/slothscout;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        # Trocar de modelo é mudar esta linha (ex.: qwen2.5:3b).
+        model: ${SLOTHSCOUT_MODEL:gemma3:4b}
+        temperature: 0.1
+        num-ctx: 8192
+
+server:
+  port: 8080
+
+slothscout:
+  resume-path: config/resume.md
+  reports-dir: reports
+  zone: America/Sao_Paulo
+  schedule:
+    cron: "0 0 3 * * *"
+
+  imap:
+    host: imap.gmail.com
+    port: 993
+    # Senha de app do Gmail. Nunca no repositório: só variável de ambiente.
+    username: ${SLOTHSCOUT_IMAP_USER:}
+    password: ${SLOTHSCOUT_IMAP_PASSWORD:}
+    folder: ${SLOTHSCOUT_IMAP_FOLDER:Vagas}
+    lookback-days: 3
+    max-messages: 200
+
+  criteria:
+    levels: [Júnior, Estágio]
+    on-site-cities: [São José dos Campos, Taubaté, Caçapava, Jacareí]
+    on-site-modes: presencial ou híbrido
+    remote: remoto no Brasil ou internacional
+    stacks: [Java, Python, JavaScript, .NET]
+    max-years-experience: 2
+    exclusions:
+      - senioridade alta (pleno, sênior, especialista, lead)
+      - exige mais anos de experiência do que o limite
+      - viagem obrigatória para São Paulo
+    cutoff: 70
+
+  run:
+    batch-size: 5
+    max-jobs-per-run: 150
+    max-attempts: 3
+    # Salva o HTML bruto dos alertas em data/samples para ajustar os parsers.
+    dump-html: false

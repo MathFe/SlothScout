@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta th:if="${running}" http-equiv="refresh" content="10">
+	<title>SlothScout</title>
+	<style>
+		:root {
+			--bg: #f6f1e7; --card: #fffdf8; --ink: #2b2620; --muted: #7a6f60; --line: #e6dccb;
+			--good: #3f7d4e; --good-bg: #e3f0e3; --warn: #a2621b; --warn-bg: #f8ead6; --accent: #6b4f2e;
+		}
+		@media (prefers-color-scheme: dark) {
+			:root {
+				--bg: #1c1915; --card: #25211c; --ink: #efe7da; --muted: #a89c8a; --line: #3a342c;
+				--good: #8cc79a; --good-bg: #24362a; --warn: #e6b070; --warn-bg: #3b2d1c; --accent: #d9b98a;
+			}
+		}
+		* { box-sizing: border-box; }
+		body { margin: 0; background: var(--bg); color: var(--ink);
+			font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+		main { max-width: 760px; margin: 0 auto; padding: 40px 16px 80px; }
+		header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+		.brand { font-weight: 700; letter-spacing: .02em; color: var(--accent); }
+		.brand span { font-size: 1.4em; margin-right: 6px; }
+		.meta { color: var(--muted); font-size: .9em; }
+		button { font: inherit; background: var(--accent); color: var(--bg); border: 0; border-radius: 999px;
+			padding: 8px 16px; cursor: pointer; }
+		button[disabled] { opacity: .5; cursor: default; }
+		.headline { margin: 36px 0 8px; font-family: Georgia, "Times New Roman", serif; }
+		.headline p { margin: 0; font-size: clamp(1.35rem, 4vw, 1.9rem); line-height: 1.3; }
+		.headline p + p { color: var(--muted); margin-top: 6px; font-size: clamp(1.05rem, 3vw, 1.3rem); }
+		.stats { color: var(--muted); font-size: .9em; margin-bottom: 32px; }
+		h2 { font-size: .8em; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 32px 0 12px; }
+		.job { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+		.job-top { display: flex; gap: 16px; align-items: flex-start; }
+		.score { min-width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center;
+			font-weight: 700; font-size: 1.25em; background: var(--good-bg); color: var(--good); }
+		.job h3 { margin: 0; font-size: 1.1em; }
+		.job h3 a { color: inherit; text-decoration: none; }
+		.job h3 a:hover { text-decoration: underline; }
+		.where { color: var(--muted); font-size: .92em; }
+		ul.reasons { margin: 12px 0 0; padding: 0; list-style: none; }
+		ul.reasons li { padding-left: 24px; position: relative; margin: 4px 0; }
+		ul.reasons li::before { position: absolute; left: 0; }
+		ul.reasons li.ok::before { content: "✓"; color: var(--good); }
+		ul.reasons li.nope::before { content: "?"; color: var(--warn); font-weight: 700; }
+		.flags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+		.flag { background: var(--warn-bg); color: var(--warn); border-radius: 999px; padding: 2px 10px; font-size: .82em; }
+		details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px 20px; }
+		summary { cursor: pointer; padding: 10px 0; color: var(--muted); }
+		.rest { list-style: none; margin: 0 0 12px; padding: 0; }
+		.rest li { display: flex; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: .93em; }
+		.rest .n { color: var(--muted); min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+		.rest a { color: inherit; }
+		.rest .why { color: var(--muted); }
+		.empty { margin-top: 60px; text-align: center; color: var(--muted); }
+		.empty .big { font-size: 3em; }
+		nav.days { margin-top: 40px; font-size: .88em; color: var(--muted); }
+		nav.days a { color: var(--muted); margin-right: 10px; }
+		.status { margin-top: 10px; font-size: .88em; color: var(--muted); }
+	</style>
+</head>
+<body>
+<main>
+	<header>
+		<div class="brand"><span>🦥</span>SlothScout</div>
+		<form method="post" action="/run">
+			<button type="submit" th:disabled="${running}" th:text="${running} ? 'Farejando…' : 'Rodar agora'">Rodar agora</button>
+		</form>
+	</header>
+	<div class="status">
+		<span th:text="${lastMessage}"></span>
+		<span th:if="${pending > 0}" th:text="' · ' + ${pending} + ' vagas aguardando pontuação'"></span>
+	</div>
+
+	<div th:if="${digest == null}" class="empty">
+		<div class="big">🦥💤</div>
+		<p>Nenhum resumo ainda. A preguiça trabalha às 3h, ou agora se você clicar em <em>Rodar agora</em>.</p>
+	</div>
+
+	<th:block th:if="${digest != null}">
+		<section class="headline">
+			<p th:each="line : ${headline}" th:text="${line}"></p>
+		</section>
+		<div class="stats"
+			 th:text="${#temporals.format(digest.day, 'dd/MM/yyyy')} + ' · ' + ${digest.alertsRead} + ' alertas · ' + ${digest.jobsScored} + ' vagas avaliadas · corte ' + ${digest.cutoff} + ' · ' + ${digest.model}"></div>
+
+		<h2 th:text="'Aplica nessas (' + ${#lists.size(shortlist)} + ')'">Aplica nessas</h2>
+		<p th:if="${#lists.isEmpty(shortlist)}" class="meta">Nenhuma hoje. Volta a dormir.</p>
+		<article class="job" th:each="j : ${shortlist}">
+			<div class="job-top">
+				<div class="score" th:text="${j.score}">88</div>
+				<div>
+					<h3><a th:href="${j.url}" target="_blank" rel="noopener" th:text="${j.title}">Título</a></h3>
+					<div class="where">
+						<span th:text="${j.company} ?: '?'"></span> ·
+						<span th:text="${j.location} ?: '?'"></span>
+						<span th:if="${j.workMode != null}" th:text="' · ' + ${j.workMode}"></span>
+						<span th:text="' · ' + ${j.source}"></span>
+					</div>
+				</div>
+			</div>
+			<ul class="reasons">
+				<li th:each="r : ${j.reasons}" th:classappend="${r.grounded} ? 'ok' : 'nope'"
+					th:title="${r.grounded} ? 'Trecho citado aparece na vaga' : 'Não achei o trecho citado no texto da vaga'"
+					th:text="${r.text}"></li>
+			</ul>
+			<div class="flags" th:if="${!#lists.isEmpty(j.flags)}">
+				<span class="flag" th:each="f : ${j.flags}" th:text="${f}"></span>
+			</div>
+		</article>
+
+		<h2>Ignora o resto</h2>
+		<details>
+			<summary th:text="${#lists.size(ignored)} + ' vagas abaixo do corte'"></summary>
+			<ul class="rest">
+				<li th:each="j : ${ignored}">
+					<span class="n" th:text="${j.score}"></span>
+					<span>
+						<a th:href="${j.url}" target="_blank" rel="noopener" th:text="${j.title}"></a>
+						<span class="why" th:text="' · ' + (${j.company} ?: '?')"></span>
+						<span class="why" th:if="${!#lists.isEmpty(j.flags)}" th:text="' — ' + ${#strings.listJoin(j.flags, ', ')}"></span>
+					</span>
+				</li>
+			</ul>
+		</details>
+	</th:block>
+
+	<nav class="days" th:if="${#lists.size(days) > 1}">
+		Dias anteriores:
+		<a th:each="d : ${days}" th:href="@{/d/{day}(day=${d})}" th:text="${#temporals.format(d, 'dd/MM')}"></a>
+	</nav>
+</main>
+</body>
+</html>
